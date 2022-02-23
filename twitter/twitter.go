@@ -1,6 +1,7 @@
 package twitter
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,7 +13,7 @@ import (
 )
 
 type Twitter struct {
-	Client namecheck.Getter
+	Client namecheck.Doer
 }
 
 var re = regexp.MustCompile("^[0-9A-Z_a-z]{4,15}$")
@@ -30,12 +31,16 @@ func (*Twitter) IsValid(username string) bool {
 		looksGood(username)
 }
 
-func (tw *Twitter) IsAvailable(username string) (bool, error) {
+func (tw *Twitter) IsAvailable(ctx context.Context, username string) (bool, error) {
 	const tmpl = "https://europe-west6-namechecker-api.cloudfunctions.net/userlookup?username=%s"
 	endpoint := fmt.Sprintf(tmpl, username)
-	resp, err := tw.Client.Get(endpoint)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
-		return false, errors.New("unknown availability")
+		return false, err
+	}
+	resp, err := tw.Client.Do(req)
+	if err != nil {
+		return false, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {

@@ -1,7 +1,7 @@
 package github
 
 import (
-	"errors"
+	"context"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -11,7 +11,7 @@ import (
 )
 
 type GitHub struct {
-	Client namecheck.Getter
+	Client namecheck.Doer
 }
 
 var re = regexp.MustCompile("^[-0-9A-Za-z]{3,39}$")
@@ -31,8 +31,13 @@ func (*GitHub) IsValid(username string) bool {
 		looksGood(username)
 }
 
-func (gh *GitHub) IsAvailable(username string) (bool, error) {
-	resp, err := gh.Client.Get(fmt.Sprintf("http://github.com/%s", username))
+func (gh *GitHub) IsAvailable(ctx context.Context, username string) (bool, error) {
+	endpoint := fmt.Sprintf("http://github.com/%s", username)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return false, err
+	}
+	resp, err := gh.Client.Do(req)
 	if err != nil {
 		return false, err
 	}
@@ -43,8 +48,7 @@ func (gh *GitHub) IsAvailable(username string) (bool, error) {
 	case http.StatusNotFound:
 		return true, nil
 	default:
-		return false,
-			errors.New("unknown availability")
+		return false, ctx.Err()
 	}
 }
 

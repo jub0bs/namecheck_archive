@@ -1,6 +1,7 @@
 package github_test
 
 import (
+	"context"
 	"net/http"
 	"testing"
 
@@ -50,7 +51,7 @@ func TestIsAvailable(t *testing.T) {
 			Client: &stub.SuccessfulGetter{StatusCode: c.statusCode},
 		}
 		f := func(t *testing.T) {
-			got, err := gh.IsAvailable(username)
+			got, err := gh.IsAvailable(context.Background(), username)
 			if err != nil || got != c.want {
 				t.Errorf("github.IsAvailable(%q): got %t; want %t", username, got, c.want)
 			}

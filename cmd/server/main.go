@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"sync"
 
 	"github.com/gorilla/mux"
@@ -68,7 +71,7 @@ func handleCheck(w http.ResponseWriter, r *http.Request) {
 	var wg sync.WaitGroup
 	wg.Add(len(checkers))
 	for _, checker := range checkers {
-		go check(checker, username, &wg, resultCh, errCh)
+		go check(r.Context(), checker, username, &wg, resultCh, errCh)
 	}
 	go func() {
 		wg.Wait()
@@ -78,7 +81,8 @@ func handleCheck(w http.ResponseWriter, r *http.Request) {
 	var done bool
 	for !done {
 		select {
-		case <-errCh:
+		case err := <-errCh:
+			fmt.Fprintln(os.Stderr, err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		case res, ok := <-resultCh:
@@ -98,6 +102,7 @@ func handleCheck(w http.ResponseWriter, r *http.Request) {
 }
 
 func check(
+	ctx context.Context,
 	checker namecheck.Checker,
 	username string,
 	wg *sync.WaitGroup,
@@ -115,7 +120,7 @@ func check(
 		return
 	}
 	var err error
-	res.Available, err = checker.IsAvailable(username)
+	res.Available, err = checker.IsAvailable(ctx, username)
 	if err != nil {
 		errCh <- err
 		return
