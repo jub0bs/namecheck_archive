@@ -8,18 +8,22 @@ import (
 	"strings"
 )
 
+type GitHub struct {
+	Client *http.Client
+}
+
 var re = regexp.MustCompile(`^[a-zA-Z0-9-]{3,39}$`)
 
-func IsValid(username string) bool {
+func (*GitHub) IsValid(username string) bool {
 	return !strings.HasPrefix(username, "-") &&
 		!strings.HasSuffix(username, "-") &&
 		!strings.Contains(username, "--") &&
 		re.MatchString(username)
 }
 
-func IsAvailable(username string) (bool, error) {
+func (gh *GitHub) IsAvailable(username string) (bool, error) {
 	addr := fmt.Sprintf("https://github.com/%s", username)
-	resp, err := http.Get(addr)
+	resp, err := gh.Client.Get(addr)
 	if err != nil {
 		return false, err
 	}
