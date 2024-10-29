@@ -4,13 +4,29 @@ import (
 	"fmt"
 
 	"github.com/jub0bs/namecheck/github"
+	"github.com/jub0bs/namecheck/reddit"
 )
 
 func main() {
-	fmt.Println(github.IsValid("jub0bs"))
-	fmt.Println(github.IsValid("khaled"))
-	fmt.Println(github.IsValid("alaa"))
-	fmt.Println(github.IsValid("khaled-"))
-	fmt.Println(github.IsValid("a--laa"))
-	fmt.Println(github.IsValid("khal*ed"))
+	username := "jub0bs"
+	valid := github.IsValid(username)
+	fmt.Printf("validity of %q on GitHub: %t\n", username, valid)
+	if valid {
+		avail, err := github.IsAvailable(username)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		fmt.Printf("availability of %q on GitHub: %t\n", username, avail)
+	}
+	valid = reddit.IsValid(username)
+	fmt.Printf("validity of %q on Reddit: %t\n", username, valid)
+	if valid {
+		avail, err := reddit.IsAvailable(username)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		fmt.Printf("availability of %q on Reddit: %t\n", username, avail)
+	}
 }
