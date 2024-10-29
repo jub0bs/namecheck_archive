@@ -29,9 +29,11 @@ func main() {
 		os.Exit(1)
 	}
 	username := os.Args[1]
-	checkers := []Checker{
-		&github.GitHub{Client: http.DefaultClient},
-		&reddit.Reddit{Client: http.DefaultClient},
+	gh := github.GitHub{Client: http.DefaultClient}
+	rd := reddit.Reddit{Client: http.DefaultClient}
+	var checkers []Checker
+	for range 20 {
+		checkers = append(checkers, &gh, &rd)
 	}
 	for _, checker := range checkers {
 		valid := checker.IsValid(username)
