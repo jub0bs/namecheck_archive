@@ -20,6 +20,7 @@ type Availabler interface {
 type Checker interface {
 	Validator
 	Availabler
+	fmt.Stringer
 }
 
 func main() {
@@ -34,7 +35,7 @@ func main() {
 	}
 	for _, checker := range checkers {
 		valid := checker.IsValid(username)
-		fmt.Printf("validity of %q on ???: %t\n", username, valid)
+		fmt.Printf("validity of %q on %s: %t\n", username, checker, valid)
 		if !valid {
 			continue
 		}
@@ -43,6 +44,6 @@ func main() {
 			fmt.Println(err)
 			return
 		}
-		fmt.Printf("availability of %q on ???: %t\n", username, avail)
+		fmt.Printf("availability of %q on %s: %t\n", username, checker, avail)
 	}
 }
