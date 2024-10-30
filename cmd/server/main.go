@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
-	"os"
 	"sync"
 
 	"github.com/jub0bs/namecheck"
@@ -20,11 +20,16 @@ type Result struct {
 }
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: namecheck <username>")
-		os.Exit(1)
+	http.HandleFunc("GET /check", handleCheck)
+	log.Fatal(http.ListenAndServe(":8080", nil))
+}
+
+func handleCheck(w http.ResponseWriter, r *http.Request) {
+	username := r.URL.Query().Get("username")
+	if username == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
 	}
-	username := os.Args[1]
 	gh := github.GitHub{Client: http.DefaultClient}
 	rd := reddit.Reddit{Client: http.DefaultClient}
 	var checkers []namecheck.Checker
@@ -46,7 +51,7 @@ func main() {
 	for res := range resultCh {
 		results = append(results, res)
 	}
-	fmt.Println(results)
+	fmt.Fprintln(w, results)
 }
 
 func check(
