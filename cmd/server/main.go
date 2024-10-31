@@ -20,9 +20,12 @@ type Result struct {
 	Available bool   `json:"available"`
 }
 
+var m = make(map[string]uint)
+
 func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /check", handleCheck)
+	mux.HandleFunc("GET /stats", handleStats)
 
 	// instantiate a CORS middleware whose config suits your needs
 	corsMw, err := cors.NewMiddleware(cors.Config{
@@ -45,6 +48,7 @@ func handleCheck(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	m[username]++
 	gh := github.GitHub{Client: http.DefaultClient}
 	rd := reddit.Reddit{Client: http.DefaultClient}
 	var checkers []namecheck.Checker
@@ -84,6 +88,14 @@ func handleCheck(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	enc := json.NewEncoder(w)
 	if err := enc.Encode(results); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+}
+
+func handleStats(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	enc := json.NewEncoder(w)
+	if err := enc.Encode(m); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
 }
