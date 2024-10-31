@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"maps"
 	"net/http"
 	"sync"
 
@@ -20,7 +21,10 @@ type Result struct {
 	Available bool   `json:"available"`
 }
 
-var m = make(map[string]uint)
+var (
+	m  = make(map[string]uint)
+	mu sync.Mutex
+)
 
 func main() {
 	mux := http.NewServeMux()
@@ -48,7 +52,9 @@ func handleCheck(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	mu.Lock()
 	m[username]++
+	mu.Unlock()
 	gh := github.GitHub{Client: http.DefaultClient}
 	rd := reddit.Reddit{Client: http.DefaultClient}
 	var checkers []namecheck.Checker
@@ -94,6 +100,9 @@ func handleCheck(w http.ResponseWriter, r *http.Request) {
 
 func handleStats(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	mu.Lock()
+	m := maps.Clone(m) // create a "deep" copy of the map
+	mu.Unlock()
 	enc := json.NewEncoder(w)
 	if err := enc.Encode(m); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
