@@ -33,7 +33,10 @@ func main() {
 
 	// instantiate a CORS middleware whose config suits your needs
 	corsMw, err := cors.NewMiddleware(cors.Config{
-		Origins: []string{"*"},
+		Origins: []string{"https://jub0bs.github.io"},
+		ExtraConfig: cors.ExtraConfig{
+			PrivateNetworkAccess: true,
+		},
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -58,7 +61,7 @@ func handleCheck(w http.ResponseWriter, r *http.Request) {
 	gh := github.GitHub{Client: http.DefaultClient}
 	rd := reddit.Reddit{Client: http.DefaultClient}
 	var checkers []namecheck.Checker
-	const n = 20
+	const n = 1
 	for range n {
 		checkers = append(checkers, &gh, &rd)
 	}
