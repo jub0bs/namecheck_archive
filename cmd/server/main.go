@@ -15,7 +15,6 @@ import (
 )
 
 type Result struct {
-	Username  string `json:"username"`
 	Platform  string `json:"platform"`
 	Valid     bool   `json:"valid"`
 	Available bool   `json:"available"`
@@ -95,8 +94,15 @@ func handleCheck(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	w.Header().Set("Content-Type", "application/json")
+	data := struct { // note: anonymous struct type
+		Username string   `json:"username"`
+		Results  []Result `json:"results,omitempty"`
+	}{
+		Username: username,
+		Results:  results,
+	}
 	enc := json.NewEncoder(w)
-	if err := enc.Encode(results); err != nil {
+	if err := enc.Encode(data); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
 }
@@ -122,7 +128,6 @@ func check(
 ) {
 	defer wg.Done()
 	res := Result{
-		Username: username,
 		Platform: checker.String(),
 		Valid:    checker.IsValid(username),
 	}
