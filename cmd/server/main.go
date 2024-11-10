@@ -12,6 +12,7 @@ import (
 	"github.com/jub0bs/namecheck"
 	"github.com/jub0bs/namecheck/github"
 	"github.com/jub0bs/namecheck/reddit"
+	"golang.org/x/sync/errgroup"
 )
 
 type Result struct {
@@ -60,38 +61,29 @@ func handleCheck(w http.ResponseWriter, r *http.Request) {
 	gh := github.GitHub{Client: http.DefaultClient}
 	rd := reddit.Reddit{Client: http.DefaultClient}
 	var checkers []namecheck.Checker
-	const n = 1
+	const n = 10
 	for range n {
 		checkers = append(checkers, &gh, &rd)
 	}
 	resultCh := make(chan Result)
-	errorCh := make(chan error)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	g, ctx := errgroup.WithContext(context.Background())
 	var wg sync.WaitGroup
 	for _, checker := range checkers {
 		wg.Add(1)
-		go check(ctx, checker, username, &wg, resultCh, errorCh)
+		g.Go(func() error { return check(ctx, checker, username, &wg, resultCh) })
 	}
+	var err error
 	go func() {
-		wg.Wait()
+		err = g.Wait()
 		close(resultCh)
 	}()
 	var results []Result
-	var finished bool
-	for !finished {
-		select {
-		case <-errorCh:
-			cancel()
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		case res, ok := <-resultCh:
-			if !ok {
-				finished = true
-				continue
-			}
-			results = append(results, res)
-		}
+	for res := range resultCh {
+		results = append(results, res)
+	}
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	data := struct { // note: anonymous struct type
@@ -124,8 +116,7 @@ func check(
 	username string,
 	wg *sync.WaitGroup,
 	resultCh chan<- Result,
-	errorCh chan<- error,
-) {
+) error {
 	defer wg.Done()
 	res := Result{
 		Platform: checker.String(),
@@ -136,19 +127,16 @@ func check(
 		case <-ctx.Done():
 		case resultCh <- res:
 		}
-		return
+		return nil
 	}
 	avail, err := checker.IsAvailable(username)
 	if err != nil {
-		select {
-		case <-ctx.Done():
-		case errorCh <- err:
-		}
-		return
+		return err
 	}
 	res.Available = avail
 	select {
 	case <-ctx.Done():
 	case resultCh <- res:
 	}
+	return nil
 }
