@@ -10,6 +10,11 @@ import (
 	"github.com/jub0bs/namecheck/github"
 )
 
+type Checker interface {
+	IsValid(string) bool
+	IsAvailable(string) (bool, error)
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Fprintf(os.Stdout, "usage: %s <username>\n", os.Args[0])
@@ -19,32 +24,21 @@ func main() {
 	gh := github.GitHub{
 		Client: http.DefaultClient,
 	}
-	if !gh.IsValid(username) {
-		fmt.Printf("%q is invalid on GitHub.\n", username)
-		return
-	}
-	avail, err := gh.IsAvailable(username)
-	if err != nil {
-		log.Fatal(err)
-	}
-	if !avail {
-		fmt.Printf("%q is valid but unavailable on GitHub.\n", username)
-		return
-	}
-	fmt.Printf("%q is valid and available on GitHub.\n", username)
-
 	var bs bluesky.Bluesky
-	if !bs.IsValid(username) {
-		fmt.Printf("%q is invalid on Bluesky.\n", username)
-		return
+	checkers := []Checker{&gh, &bs}
+	for _, checker := range checkers {
+		if !checker.IsValid(username) {
+			fmt.Printf("%q is invalid on %s.\n", username, checker)
+			return
+		}
+		avail, err := checker.IsAvailable(username)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if !avail {
+			fmt.Printf("%q is valid but unavailable on %s.\n", username, checker)
+			return
+		}
+		fmt.Printf("%q is valid and available on %s.\n", username, checker)
 	}
-	avail, err = bs.IsAvailable(username)
-	if err != nil {
-		log.Fatal(err)
-	}
-	if !avail {
-		fmt.Printf("%q is valid but unavailable on Bluesky.\n", username)
-		return
-	}
-	fmt.Printf("%q is valid and available on Bluesky.\n", username)
 }

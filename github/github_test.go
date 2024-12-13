@@ -21,9 +21,10 @@ func TestIsValid(t *testing.T) {
 		"contains invalid chars":           {"ju^b0bs", false},
 		"all good":                         {"jub0bs", true},
 	}
+	var gh github.GitHub
 	for desc, tc := range testCases {
 		f := func(t *testing.T) {
-			got := github.IsValid(tc.username)
+			got := gh.IsValid(tc.username)
 			if got != tc.want {
 				t.Errorf("github.IsValid(%q): got %t; want %t", tc.username, got, tc.want)
 			}
