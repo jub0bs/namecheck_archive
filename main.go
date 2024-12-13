@@ -3,13 +3,18 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/jub0bs/namecheck/bluesky"
 	"github.com/jub0bs/namecheck/github"
 )
 
 func main() {
-	username := "jub0bs"
+	if len(os.Args) < 2 {
+		fmt.Fprintf(os.Stdout, "usage: %s <username>\n", os.Args[0])
+		os.Exit(1)
+	}
+	username := os.Args[1]
 	if !github.IsValid(username) {
 		fmt.Printf("%q is invalid on GitHub.\n", username)
 		return
