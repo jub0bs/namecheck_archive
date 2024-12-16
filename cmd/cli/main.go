@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"sync"
@@ -13,6 +12,14 @@ import (
 type Checker interface {
 	IsValid(string) bool
 	IsAvailable(string) (bool, error)
+	String() string
+}
+
+type Result struct {
+	Platform  string
+	Valid     bool
+	Available bool
+	Err       error
 }
 
 func main() {
@@ -29,27 +36,38 @@ func main() {
 	for range n {
 		checkers = append(checkers, &gh)
 	}
+	resultCh := make(chan Result)
 	var wg sync.WaitGroup
 	wg.Add(len(checkers))
 	for _, checker := range checkers {
-		go check(checker, username, &wg)
+		go check(checker, username, &wg, resultCh)
 	}
-	wg.Wait()
+	go func() {
+		wg.Wait()
+		close(resultCh)
+	}()
+	var results []Result
+	for res := range resultCh {
+		results = append(results, res)
+	}
+	fmt.Println(results)
 }
 
-func check(checker Checker, username string, wg *sync.WaitGroup) {
+func check(
+	checker Checker,
+	username string,
+	wg *sync.WaitGroup,
+	resultCh chan Result,
+) {
 	defer wg.Done()
-	if !checker.IsValid(username) {
-		fmt.Printf("%q is invalid on %s.\n", username, checker)
+	res := Result{
+		Platform: checker.String(),
+		Valid:    checker.IsValid(username),
+	}
+	if !res.Valid {
+		resultCh <- res
 		return
 	}
-	avail, err := checker.IsAvailable(username)
-	if err != nil {
-		log.Fatal(err)
-	}
-	if !avail {
-		fmt.Printf("%q is valid but unavailable on %s.\n", username, checker)
-		return
-	}
-	fmt.Printf("%q is valid and available on %s.\n", username, checker)
+	res.Available, res.Err = checker.IsAvailable(username)
+	resultCh <- res
 }
