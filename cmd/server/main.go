@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"maps"
 	"net/http"
 	"sync"
 
@@ -23,7 +24,10 @@ type Result struct {
 	Available bool   `json:"available"`
 }
 
-var stats = make(map[string]uint)
+var (
+	stats = make(map[string]uint)
+	mu    sync.Mutex
+)
 
 func main() {
 	mux := http.NewServeMux()
@@ -45,6 +49,9 @@ func main() {
 
 func handleStats(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	mu.Lock()
+	stats := maps.Clone(stats)
+	mu.Unlock()
 	enc := json.NewEncoder(w)
 	if err := enc.Encode(stats); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -57,7 +64,9 @@ func handleCheck(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	mu.Lock()
 	stats[username]++
+	mu.Unlock()
 	gh := github.GitHub{
 		Client: http.DefaultClient,
 	}
